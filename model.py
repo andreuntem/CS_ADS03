@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
-# from sklearn.neighbors import KNeighborsClassifier
 
 
 def preprocess(df):
@@ -67,11 +66,16 @@ def preprocess(df):
         df['diff_days'] = (df['deadline']-df['launched_at']).apply(lambda x: x.days)
     df.drop(['deadline', 'launched_at'], axis=1, inplace=True)
 
-    y = df[~df['evaluation_set']]['state']
-
+    # Generate dummies and create X, X_eval and y
     df = pd.get_dummies(df)
     X = df[~df['evaluation_set']].drop(columns=['state', 'evaluation_set'], axis=1)
     X_eval = df[df['evaluation_set']].drop(columns=['state', 'evaluation_set'], axis=1)
+    y = df[~df['evaluation_set']]['state']
+
+    # Standardize X and X_eval
+    scaler = StandardScaler()
+    X = scaler.fit_transform(X)
+    X_eval = scaler.transform(X_eval)
 
     return X, y, X_eval
 
@@ -85,12 +89,7 @@ def train(X, y):
     :type y: pd.DataFrame with one column or pd.Series
     :return: a trained model
     """
-    global scaler
-    scaler = StandardScaler()
-    X = scaler.fit_transform(X)
-
     model = LogisticRegression(solver='liblinear', n_jobs=-1)
-    # model = KNeighborsClassifier(n_neighbors=100, n_jobs=-1)
     model.fit(X, y)
     return model
 
@@ -111,6 +110,5 @@ def predict(model, X_test):
     :param X_test: a processed test set (on KATE it will be X_eval)
     :return: y_pred, your predictions
     """
-    X_test = scaler.transform(X_test)
     y_pred = model.predict(X_test)
     return y_pred
